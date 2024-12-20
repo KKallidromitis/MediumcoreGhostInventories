@@ -1,4 +1,6 @@
-Mediumcore Ghost Inventories
+Mediumcore Ghost Inventories (v1.4)
+
+Terraria mod that on player death spawns a ghost that holds the players inventory.
 
 This mods purpose is to remove the need to do inventory management every time you die as a mediumcore character. By default in Terraria when you die in mediumcore and close the server before picking up your items they are lost, this mod solves that as inventories will be saved with the map.
 
@@ -16,4 +18,5 @@ The only inventories that will not spawn a ghost are an empty inventory or the e
 Possible Issues:
 Accessories or items from mods that prevent death will probably cause the ghost to still spawn meaning inventory will be duplicated.
 
+This mod was initially created by Cooley and was updated to v1.4 using tModPorter.
 Thanks to Logicon and Exuvo whos code was used to create the foundation for this mod.

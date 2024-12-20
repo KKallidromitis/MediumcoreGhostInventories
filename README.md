@@ -1,4 +1,4 @@
-# MediumcoreGhostInventories
+# Mediumcore Ghost Inventories (v1.4)
 
 Terraria mod that on player death spawns a ghost that holds the players inventory.
 
@@ -18,4 +18,5 @@ The only inventories that will not spawn a ghost are an empty inventory or the e
 Possible Issues:
 Accessories or items from mods that prevent death will probably cause the ghost to still spawn meaning inventory will be duplicated.
 
+This mod was initially created by Cooley and was updated to v1.4 using tModPorter.
 Thanks to Logicon and Exuvo whos code was used to create the foundation for this mod.

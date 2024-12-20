@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
 using System;
+using MediumcoreGhostInventories.NPCs;  // To access GhostInventory
+using Terraria.DataStructures;          // To access IEntitySource
 
 namespace MediumcoreGhostInventories
 {
@@ -48,7 +50,9 @@ namespace MediumcoreGhostInventories
                     int positionX = reader.ReadInt32();
                     int positionY = reader.ReadInt32();
 
-                    NPC.NewNPC(positionX, positionY, NPCType("GhostInventory"), ai0: positionX, ai1: positionY);
+                    int ghostInventoryType = ModContent.NPCType<GhostInventory>();
+                    IEntitySource source = new EntitySource_Misc("GhostSpawnAfterDeath");
+                    NPC.NewNPC(source, positionX, positionY, ghostInventoryType, ai0: (float)positionX, ai1: (float)positionY);
 
                     break;
                 case MediumcoreGhostInventoriesMessageType.SetFavourites:

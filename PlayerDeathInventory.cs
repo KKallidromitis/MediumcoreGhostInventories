@@ -4,6 +4,9 @@ using Terraria.ModLoader;
 using Terraria.ModLoader.IO;
 using Microsoft.Xna.Framework;
 
+using MediumcoreGhostInventories.NPCs;  // To access GhostInventory
+using Terraria.DataStructures;          // To access IEntitySource
+
 namespace MediumcoreGhostInventories
 {
     public class PlayerDeathInventory
@@ -58,10 +61,11 @@ namespace MediumcoreGhostInventories
 
         private void DropItemArray(Rectangle rect, Item[] items)
         {
+            IEntitySource source = new EntitySource_Misc("GhostSpawnAfterDeath");
             foreach (Item item in items)
             {
                 if (item.Name != "")
-                    Item.NewItem(rect, item.netID, Stack: item.stack, prefixGiven: item.prefix);
+                    Item.NewItem(source, rect, item.netID, Stack: item.stack, prefixGiven: item.prefix);
             }
         }
 

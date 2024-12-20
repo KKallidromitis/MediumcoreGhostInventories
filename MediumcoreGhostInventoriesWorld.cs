@@ -6,23 +6,26 @@ using Terraria;
 using Terraria.ModLoader;
 using Terraria.ModLoader.IO;
 
+using MediumcoreGhostInventories.NPCs;  // To access GhostInventory
+using Terraria.DataStructures;          // To access IEntitySource
+
 namespace MediumcoreGhostInventories
 {
-    class MediumcoreGhostInventoriesWorld : ModWorld
+    class MediumcoreGhostInventoriesWorld : ModSystem
     {
         public Dictionary<Point, PlayerDeathInventory> playerDeathInventoryMap;
 
-        public override void Initialize()
+        public override void OnWorldLoad()/* tModPorter Suggestion: Also override OnWorldUnload, and mirror your worldgen-sensitive data initialization in PreWorldGen */
         {
             playerDeathInventoryMap = new Dictionary<Point, PlayerDeathInventory>();
         }
 
-        public override TagCompound Save()
+        public override void SaveWorldData(TagCompound tag)/* tModPorter Suggestion: Edit tag parameter instead of returning new TagCompound */
         {
             var inventoryMap = new List<TagCompound>();
             foreach (var inventory in playerDeathInventoryMap)
             {
-                mod.Logger.Debug($"Saving inventory at  - {inventory.Key}");
+                Mod.Logger.Debug($"Saving inventory at  - {inventory.Key}");
 
                 inventoryMap.Add(new TagCompound() {
                     { "positionX", inventory.Key.X },
@@ -35,13 +38,12 @@ namespace MediumcoreGhostInventories
                     { "miscDyes", new List<Item>(inventory.Value.deathMiscDyes) },
                 });
             }
-            return new TagCompound
-            {
-                { "playerDeathInventoryMap", inventoryMap },
-            };
+
+            // Add the inventoryMap to the existing tag instead of returning a new TagCompound
+            tag["playerDeathInventoryMap"] = inventoryMap;
         }
 
-        public override void Load(TagCompound tag)
+        public override void LoadWorldData(TagCompound tag)
         {
             try
             {
@@ -50,7 +52,7 @@ namespace MediumcoreGhostInventories
                 {
                     Point position = new Point(inventory.GetInt("positionX"), inventory.GetInt("positionY"));
 
-                    mod.Logger.Debug($"Loading inventory at  - {position}");
+                    Mod.Logger.Debug($"Loading inventory at  - {position}");
 
                     string playerID = inventory.GetString("playerID");
 
@@ -69,12 +71,14 @@ namespace MediumcoreGhostInventories
                     playerDeathInventoryMap[position] = new PlayerDeathInventory(dInventory, dArmor, dDye, dMiscEquips, dMiscDyes, playerID);
 
                     //Spawn NPC for each loaded inventory and pass the X and Y position to its ai
-                    NPC.NewNPC(position.X, position.Y, mod.NPCType("GhostInventory"), ai0: position.X, ai1: position.Y);
+                    int ghostInventoryType = ModContent.NPCType<GhostInventory>();
+                    IEntitySource source = new EntitySource_Misc("GhostSpawnAfterDeath");
+                    NPC.NewNPC(source, position.X, position.Y, ghostInventoryType, ai0: position.X, ai1: position.Y);
                 }
             }
             catch (Exception e)
             {
-                mod.Logger.Error("Error loading saved death inventories " + e.Message);
+                Mod.Logger.Error("Error loading saved death inventories " + e.Message);
             }
         }
 
@@ -96,7 +100,7 @@ namespace MediumcoreGhostInventories
         //Send Inventories stored on the world to multiplayer clients
         public override void NetSend(BinaryWriter writer)
         {
-            mod.Logger.Debug($"Net send");
+            Mod.Logger.Debug($"Net send");
             writer.Write(playerDeathInventoryMap.Count);
             foreach (var inventory in playerDeathInventoryMap)
             {
@@ -117,13 +121,13 @@ namespace MediumcoreGhostInventories
         {
             writer.Write(itemArray.Length);
             foreach (var item in itemArray)
-                ItemIO.Send(item, writer, writeStack: true, writeFavourite: writeFavs);
+                ItemIO.Send(item, writer, writeStack: true, writeFavorite: writeFavs);
         }
 
         //Receive Inventories stored on the world from the server and rebuilds the dictionary of inventories
         public override void NetReceive(BinaryReader reader)
         {
-            mod.Logger.Debug($"Net receive");
+            Mod.Logger.Debug($"Net receive");
             playerDeathInventoryMap = new Dictionary<Point, PlayerDeathInventory>();
 
             Point position = new Point();

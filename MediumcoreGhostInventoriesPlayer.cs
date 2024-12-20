@@ -5,6 +5,7 @@ using Terraria;
 using Terraria.DataStructures;
 using Terraria.ModLoader;
 using Terraria.ID;
+using MediumcoreGhostInventories.NPCs; // To access GhostInventory class
 
 namespace MediumcoreGhostInventories
 {
@@ -17,31 +18,34 @@ namespace MediumcoreGhostInventories
         public override bool PreKill(double damage, int hitDirection, bool pvp, ref bool playSound, ref bool genGore, ref PlayerDeathReason damageSource)
         {
             //if not mediumcore
-            if (player.difficulty != (byte)1)
+            if (Player.difficulty != (byte)1)
                 return true;
 
             MediumcoreGhostInventoriesWorld currentWorld = ModContent.GetInstance<MediumcoreGhostInventoriesWorld>();
 
             playerDeathInventoryMap = currentWorld.playerDeathInventoryMap;
 
-            Item[] deathInventory = new Item[player.inventory.Length];
-            bool[] favourites = new bool[player.inventory.Length];
-            Item[] deathArmor = new Item[player.armor.Length];
-            Item[] deathDye = new Item[player.dye.Length];
-            Item[] deathMiscEquips = new Item[player.miscEquips.Length];
-            Item[] deathMiscDyes = new Item[player.miscDyes.Length];
+            Item[] deathInventory = new Item[Player.inventory.Length];
+            bool[] favourites = new bool[Player.inventory.Length];
+            Item[] deathArmor = new Item[Player.armor.Length];
+            Item[] deathDye = new Item[Player.dye.Length];
+            Item[] deathMiscEquips = new Item[Player.miscEquips.Length];
+            Item[] deathMiscDyes = new Item[Player.miscDyes.Length];
+
+            int ghostInventoryType = ModContent.NPCType<GhostInventory>();
+            IEntitySource source = new EntitySource_Misc("GhostSpawnAfterDeath");
 
             //If player is holding an item on their mouse, drop it
             if (Main.netMode != NetmodeID.Server && Main.mouseItem.type > ItemID.None)
             {
-                int itemIndex = Item.NewItem(player.getRect(), Main.mouseItem.type, Stack: Main.mouseItem.stack, prefixGiven: Main.mouseItem.prefix);
+                int itemIndex = Item.NewItem(source, Player.getRect(), Main.mouseItem.type, Stack: Main.mouseItem.stack, prefixGiven: Main.mouseItem.prefix);
                 Main.item[itemIndex].noGrabDelay = 100;//Make player not instantly pick up item, without this the player will pick it up before dying
                 NetMessage.SendData(MessageID.SyncItem, number: itemIndex); // Sync the item across clients
             }
 
             //Clears current player inventory and stores it in above arrays
             GetAndClearInventory(ref deathInventory, ref favourites, ref deathArmor, ref deathDye, ref deathMiscEquips, ref deathMiscDyes);
-            PlayerDeathInventory currentInventory = new PlayerDeathInventory(deathInventory, deathArmor, deathDye, deathMiscEquips, deathMiscDyes, player.name);
+            PlayerDeathInventory currentInventory = new PlayerDeathInventory(deathInventory, deathArmor, deathDye, deathMiscEquips, deathMiscDyes, Player.name);
 
             //Dont continue if inventory is just the starter inventory
             if (currentInventory.numOfItems == 3)
@@ -53,8 +57,8 @@ namespace MediumcoreGhostInventories
                 return true;
 
             //Set death position to the centre of the player
-            Point deathPosition = new Point((int)player.position.X, (int)player.position.Y);
-            mod.Logger.Debug($"player death position - {player.position}");
+            Point deathPosition = new Point((int)Player.position.X, (int)Player.position.Y);
+            Mod.Logger.Debug($"player death position - {Player.position}");
 
             //if near current position doesnt already have an inventory  on it and is within the map bounds spawn the npc and add to the inventory dictionary. Else search for a new untaken position
             if (CheckPosition(deathPosition))
@@ -67,7 +71,7 @@ namespace MediumcoreGhostInventories
                 }
                 //Make sure npc isnt spawned yet on multiplayer clients incase they do not have updated deathInventoryMap, they will spawn the npc once they receive the spawnNPC message
                 if (Main.netMode != NetmodeID.MultiplayerClient)
-                    NPC.NewNPC(deathPosition.X, deathPosition.Y, mod.NPCType("GhostInventory"), ai0: deathPosition.X, ai1: deathPosition.Y);
+                    NPC.NewNPC(source, deathPosition.X, deathPosition.Y, ghostInventoryType, ai0: deathPosition.X, ai1: deathPosition.Y);
 
                 if (Main.netMode == NetmodeID.MultiplayerClient && Array.Exists(favourites, element => element))
                     SendFavorites(favourites, deathPosition.X, deathPosition.Y);//Send favourited items to server
@@ -83,7 +87,7 @@ namespace MediumcoreGhostInventories
                 }
                 //Make sure npc isnt spawned yet on multiplayer clients incase they do not have updated deathInventoryMap, they will spawn the npc once they receive the spawnNPC message
                 if (Main.netMode != NetmodeID.MultiplayerClient)
-                    NPC.NewNPC(nextUntakenDeathPosition.X, nextUntakenDeathPosition.Y, mod.NPCType("GhostInventory"), ai0: nextUntakenDeathPosition.X, ai1: nextUntakenDeathPosition.Y);
+                    NPC.NewNPC(source, nextUntakenDeathPosition.X, nextUntakenDeathPosition.Y, ghostInventoryType, ai0: nextUntakenDeathPosition.X, ai1: nextUntakenDeathPosition.Y);
 
                 if (Main.netMode == NetmodeID.MultiplayerClient && Array.Exists(favourites, element => element))
                    SendFavorites(favourites, nextUntakenDeathPosition.X, nextUntakenDeathPosition.Y);//Send favourited items to server
@@ -94,7 +98,7 @@ namespace MediumcoreGhostInventories
 
         private void SendFavorites(bool[] favourites, int x, int y)
         {
-            ModPacket packet = mod.GetPacket(capacity: 1000);
+            ModPacket packet = Mod.GetPacket(capacity: 1000);
             packet.Write((byte)MediumcoreGhostInventories.MediumcoreGhostInventoriesMessageType.SetFavourites);
 
             packet.Write(x);
@@ -115,7 +119,7 @@ namespace MediumcoreGhostInventories
         //Tell clients to spawn the inventory npc
         private void SendSpawn(int x, int y)
         {
-            ModPacket packet = mod.GetPacket();
+            ModPacket packet = Mod.GetPacket();
             packet.Write((byte)MediumcoreGhostInventories.MediumcoreGhostInventoriesMessageType.SpawnNPC);
 
             packet.Write(x);
@@ -171,48 +175,48 @@ namespace MediumcoreGhostInventories
                 }
 
             } while (searchRight.X < Main.rightWorld - OFFSCREEN_COORDS || searchLeft.X > Main.leftWorld + OFFSCREEN_COORDS); //while within map bounds, should effectively never be false but just incase to stop infinite loop
-            mod.Logger.Debug($"coudlnt find untaken position - {deathPosition}");
+            Mod.Logger.Debug($"coudlnt find untaken position - {deathPosition}");
             return deathPosition;
         }
 
         private void GetAndClearInventory(ref Item[] deathInventory, ref bool[] favourites, ref Item[] deathArmor, ref Item[] deathDye, ref Item[] deathMiscEquips, ref Item[] deathMiscDyes)
         {
             //INVENTORY
-            for (int i = 0; i < player.inventory.Length; i++)
+            for (int i = 0; i < Player.inventory.Length; i++)
             {
                 if(Main.netMode == NetmodeID.MultiplayerClient)
-                    favourites[i] = player.inventory[i].favorited;
+                    favourites[i] = Player.inventory[i].favorited;
 
-                deathInventory[i] = player.inventory[i];
-                player.inventory[i] = new Item();
+                deathInventory[i] = Player.inventory[i];
+                Player.inventory[i] = new Item();
             }
 
             //ARMOR - SOCIAL
-            for (int i = 0; i < player.armor.Length; i++)
+            for (int i = 0; i < Player.armor.Length; i++)
             {
-                deathArmor[i] = player.armor[i];
-                player.armor[i] = new Item();
+                deathArmor[i] = Player.armor[i];
+                Player.armor[i] = new Item();
             }
 
             //DYES
-            for (int i = 0; i < player.dye.Length; i++)
+            for (int i = 0; i < Player.dye.Length; i++)
             {
-                deathDye[i] = player.dye[i];
-                player.dye[i] = new Item();
+                deathDye[i] = Player.dye[i];
+                Player.dye[i] = new Item();
             }
 
             //EQUIPMENT
-            for (int i = 0; i < player.miscEquips.Length; i++)
+            for (int i = 0; i < Player.miscEquips.Length; i++)
             {
-                deathMiscEquips[i] = player.miscEquips[i];
-                player.miscEquips[i] = new Item();
+                deathMiscEquips[i] = Player.miscEquips[i];
+                Player.miscEquips[i] = new Item();
             }
 
             //EQUIPMENT - DYE
-            for (int i = 0; i < player.miscDyes.Length; i++)
+            for (int i = 0; i < Player.miscDyes.Length; i++)
             {
-                deathMiscDyes[i] = player.miscDyes[i];
-                player.miscDyes[i] = new Item();
+                deathMiscDyes[i] = Player.miscDyes[i];
+                Player.miscDyes[i] = new Item();
             }
         }
     }
